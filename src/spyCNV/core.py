@@ -5,7 +5,7 @@ from pathlib import Path
 
 from jinja2 import Environment, PackageLoader
 
-from spyCNV.io.loaders import CNVData, create_cnv_data, load_resource
+from spyCNV.io.loaders import CNVData, create_cnv_data, load_driver_gene_lists, load_resource
 
 _APP = "spyCNV"
 _PKG = files(_APP)
@@ -126,6 +126,8 @@ def render_html(
         if not 0 < purity <= 1:
             raise ValueError("purity must be between 0 and 1")
 
+    tsg_genes, onco_genes = load_driver_gene_lists()
+
     html = template.render(
         sample_id=sample_id,
         genomespy_js=genomespy_js,
@@ -133,5 +135,7 @@ def render_html(
         plots=plots,
         purity=purity,
         ploidy=ploidy,
+        tsg_genes=tsg_genes,
+        onco_genes=onco_genes,
     )
     return html

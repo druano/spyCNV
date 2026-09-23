@@ -520,6 +520,18 @@
                  return 3;
              }
 
+             // Full driver-gene classification (DriverGenePanel.37.tsv, likelihoodType),
+             // used only for the "Type" table column below — independent of the
+             // "key cancer gene" highlight/sort lists above.
+             const driverTSG = {{ tsg_genes | tojson }};
+             const driverOnco = {{ onco_genes | tojson }};
+
+             function getGeneRole(gene) {
+                 if (driverTSG.includes(gene)) return 'Tumor suppressor';
+                 if (driverOnco.includes(gene)) return 'Oncogene';
+                 return '';
+             }
+
              function annotateCNVstatus(log) {
                  const log_fl = parseFloat(log);
                  let symbol = '';
@@ -587,6 +599,10 @@
                          }
                      },
                      {
+                         name: 'Type',
+                         sort: true
+                     },
+                     {
                          name: 'Log2(FC)',
                          sort: true,
                          formatter: (log) => {
@@ -612,7 +628,7 @@
                      } else if (filter === "Gain and Loss") {
                          dt = dt.filter(d => d.log2 >= thresholds.gain || d.log2 <= thresholds.loss);
                      }
-                     return dt.map(r => [r.chr, r.gene, r.log2, r.start, r.end]);
+                     return dt.map(r => [r.chr, r.gene, getGeneRole(r.gene), r.log2, r.start, r.end]);
                  },
                  search: true,
                  sort: true,
@@ -626,8 +642,8 @@
                  const chr = "chr" + rawChr;
                  const cleanChr = String(rawChr).replace('chr', '');
                  const gene = row.cells[1].data;
-                 const start = parseInt(row.cells[3].data);
-                 const end = parseInt(row.cells[4].data);
+                 const start = parseInt(row.cells[4].data);
+                 const end = parseInt(row.cells[5].data);
                  
                  if (currentDisplayMode === 'bin') {
                      const geneBins = combinedBinData.allData.filter(r => r.gene === gene || (r.contig === cleanChr && r.start >= start && r.start <= end));

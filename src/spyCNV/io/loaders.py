@@ -210,6 +210,33 @@ def parse_segments(rows: list[dict[str, str]]) -> list[SegmentRecord]:
     return records
 
 
+def load_driver_gene_lists(
+    filepath: Path | str = Path("data", "DriverGenePanel.37.tsv"),
+) -> tuple[list[str], list[str]]:
+    """
+    Load tumor suppressor / oncogene names from a driver gene panel TSV
+    (HMF DriverGenePanel format: gene, ..., likelihoodType, ...).
+    Returns (tsg_genes, onco_genes).
+    """
+    resolved = _PKG / str(filepath) if not Path(filepath).is_absolute() else Path(filepath)
+    try:
+        with _open_file(Path(str(resolved))) as f:
+            reader = csv.DictReader(f, delimiter="\t")
+            tsg, onco = [], []
+            for row in reader:
+                gene = row.get("gene", "").strip()
+                likelihood = row.get("likelihoodType", "").strip()
+                if not gene:
+                    continue
+                if likelihood == "TSG":
+                    tsg.append(gene)
+                elif likelihood == "ONCO":
+                    onco.append(gene)
+            return tsg, onco
+    except Exception:
+        return [], []
+
+
 def load_exon_data() -> dict[str, list[tuple[int, int, dict[str, str]]]]:
     try:
         manifest_str = load_resource("data/manifest_from_ncbiRefSeq.bed")
