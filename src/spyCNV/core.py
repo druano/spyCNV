@@ -5,7 +5,13 @@ from pathlib import Path
 
 from jinja2 import Environment, PackageLoader
 
-from spyCNV.io.loaders import CNVData, create_cnv_data, load_driver_gene_lists, load_resource
+from spyCNV.io.loaders import (
+    CNVData,
+    create_cnv_data,
+    load_abcn_genes,
+    load_driver_gene_lists,
+    load_resource,
+)
 
 _APP = "spyCNV"
 _PKG = files(_APP)
@@ -26,6 +32,7 @@ def generate_html(
     output_path: str,
     purity: float | None = None,
     ploidy: float | None = None,
+    abcn: str | None = None,
 ):
     cnv_data = create_cnv_data(
         sample_id=sample_id,
@@ -36,7 +43,7 @@ def generate_html(
         segment_file=segments,
     )
     html_content = render_html(
-        sample_id=sample_id, cnv_data=cnv_data, purity=purity, ploidy=ploidy
+        sample_id=sample_id, cnv_data=cnv_data, purity=purity, ploidy=ploidy, abcn=abcn
     )
     out_file = Path(output_path, f"{sample_id}.spyCNV.html")
     write_file(str(out_file), html_content)
@@ -48,6 +55,7 @@ def render_html(
     genome: str = "hg19",
     purity: float | None = None,
     ploidy: float | None = None,
+    abcn: str | None = None,
 ) -> str:
     """Render html with embedded javascript."""
     env = Environment(loader=PackageLoader(_APP, "templates"))
@@ -127,6 +135,7 @@ def render_html(
             raise ValueError("purity must be between 0 and 1")
 
     tsg_genes, onco_genes = load_driver_gene_lists()
+    abcn_genes = load_abcn_genes(abcn) if abcn else {}
 
     html = template.render(
         sample_id=sample_id,
@@ -137,5 +146,6 @@ def render_html(
         ploidy=ploidy,
         tsg_genes=tsg_genes,
         onco_genes=onco_genes,
+        abcn_genes=abcn_genes,
     )
     return html

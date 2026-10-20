@@ -32,6 +32,10 @@ def generate(
         str | None,
         typer.Option("--segments", "-s", help="Path to segments file (.seg)"),
     ] = None,
+    abcn: Annotated[
+        str | None,
+        typer.Option("--abcn", "-a", help="Path to abcn_genes.tsv (absolute copy number per gene)"),
+    ] = None,
     purity: Annotated[
         float | None,
         typer.Option(
@@ -63,6 +67,7 @@ def generate(
         output_path=output_dir,
         purity=purity,
         ploidy=ploidy,
+        abcn=abcn,
     )
 
     output_file = Path(output_dir, f"{sample_id}.spyCNV.html")

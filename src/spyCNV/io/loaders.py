@@ -210,6 +210,27 @@ def parse_segments(rows: list[dict[str, str]]) -> list[SegmentRecord]:
     return records
 
 
+def load_abcn_genes(filepath: Path | str) -> dict[str, int]:
+    """
+    Load per-gene absolute copy number from a DRAGEN abcn_genes.tsv
+    (columns: #Chromosome, start, end, gene, CN, MCN). Returns {gene: CN}.
+    """
+    rows = load_input(
+        filepath, type="tsv", header=["chrom", "start", "end", "gene", "CN", "MCN"]
+    )
+    result: dict[str, int] = {}
+    for row in rows:
+        gene = row.get("gene", "").strip()
+        cn = row.get("CN", "").strip()
+        if not gene or not cn:
+            continue
+        try:
+            result[gene] = int(cn)
+        except ValueError:
+            continue
+    return result
+
+
 def load_driver_gene_lists(
     filepath: Path | str = Path("data", "DriverGenePanel.37.tsv"),
 ) -> tuple[list[str], list[str]]:

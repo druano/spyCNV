@@ -123,7 +123,7 @@
                          </div>
                          </div> -->
                 </div>
-                <h3>Gene Log2 Data</h3>
+                <h3>Gene CN result</h3>
                 <div id="gene-table-wrapper"></div>
             </div>
         </div>
@@ -527,9 +527,17 @@
              const driverOnco = {{ onco_genes | tojson }};
 
              function getGeneRole(gene) {
-                 if (driverTSG.includes(gene)) return 'Tumor suppressor';
-                 if (driverOnco.includes(gene)) return 'Oncogene';
+                 if (driverTSG.includes(gene)) return 'TSG';
+                 if (driverOnco.includes(gene)) return 'ONC';
                  return '';
+             }
+
+             // Per-gene absolute copy number, from DRAGEN's abcn_genes.tsv (--abcn).
+             const abcnGenes = {{ abcn_genes | tojson }};
+
+             function getAbsoluteCN(gene) {
+                 const cn = abcnGenes[gene];
+                 return (cn === undefined || cn === null) ? '' : cn;
              }
 
              function annotateCNVstatus(log) {
@@ -583,12 +591,6 @@
              grid = new gridjs.Grid({
                  columns: [
                      {
-                         name: 'Chr',
-                         sort: {
-                             compare: (a, b) => chrOrder(a) - chrOrder(b)
-                         }
-                     },
-                     {
                          name: 'Gene',
                          formatter: (cell) => {
                              const cls = getGeneClass(cell);
@@ -599,17 +601,28 @@
                          }
                      },
                      {
-                         name: 'Type',
-                         sort: true
-                     },
-                     {
                          name: 'Log2(FC)',
                          sort: true,
                          formatter: (log) => {
                              const log_str = annotateCNVstatus(log);
                              return gridjs.html(log_str);
                          }
-                     }, 'Start', { name: '_idx', hidden: true }
+                     },
+                     {
+                         name: 'Absolute CN',
+                         sort: true
+                     },
+                     {
+                         name: 'Type',
+                         sort: true
+                     },
+                     {
+                         name: 'Chr',
+                         sort: {
+                             compare: (a, b) => chrOrder(a) - chrOrder(b)
+                         }
+                     },
+                     'Start', { name: '_idx', hidden: true }
                  ],
                  data: () => {
                      const filterRadio = document.querySelector('input[name="log2Filter"]:checked');
@@ -628,7 +641,7 @@
                      } else if (filter === "Gain and Loss") {
                          dt = dt.filter(d => d.log2 >= thresholds.gain || d.log2 <= thresholds.loss);
                      }
-                     return dt.map(r => [r.chr, r.gene, getGeneRole(r.gene), r.log2, r.start, r.end]);
+                     return dt.map(r => [r.gene, r.log2, getAbsoluteCN(r.gene), getGeneRole(r.gene), r.chr, r.start, r.end]);
                  },
                  search: true,
                  sort: true,
@@ -638,12 +651,12 @@
 
              grid.on('rowClick', (...args) => {
                  const row = args[1];
-                 const rawChr = row.cells[0].data;
+                 const rawChr = row.cells[4].data;
                  const chr = "chr" + rawChr;
                  const cleanChr = String(rawChr).replace('chr', '');
-                 const gene = row.cells[1].data;
-                 const start = parseInt(row.cells[4].data);
-                 const end = parseInt(row.cells[5].data);
+                 const gene = row.cells[0].data;
+                 const start = parseInt(row.cells[5].data);
+                 const end = parseInt(row.cells[6].data);
                  
                  if (currentDisplayMode === 'bin') {
                      const geneBins = combinedBinData.allData.filter(r => r.gene === gene || (r.contig === cleanChr && r.start >= start && r.start <= end));
