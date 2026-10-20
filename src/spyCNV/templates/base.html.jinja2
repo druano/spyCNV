@@ -97,6 +97,15 @@
                         </label>
                     </div>
                     <div class="control-group">
+                        <label class="toggle-container">
+                            <span class="toggle-switch">
+                                <input type="checkbox" id="viewport-toggle" checked onchange="grid && grid.forceRender()">
+                                <span class="slider"></span>
+                            </span>
+                            <span>Visible Region Only</span>
+                        </label>
+                    </div>
+                    <div class="control-group">
                         <div class="segmented-control">
                             <label><input type="radio" name="log2Filter" value="All" checked onchange="grid.forceRender()"><span>All</span></label>
                             <label><input type="radio" name="log2Filter" value="Gain and Loss" onchange="grid.forceRender()"><span>Gain &amp; Loss</span></label>
@@ -149,6 +158,7 @@
          let genomeScale = null;
          let binScale = null;
          let currentDisplayMode = "both";
+         let visibleInterval = null; // [{chrom, pos}, {chrom, pos}] or null (whole genome)
 
          let thresholds = {
              gain: 0.5,
@@ -448,9 +458,18 @@
                  if (isBin) {
                      binScale = res.getScaleResolutionByName("binScale");
                      genomeScale = null;
+                     visibleInterval = null;
                  } else {
                      genomeScale = res.getScaleResolutionByName("genomeScale");
                      binScale = null;
+                     if (genomeScale) {
+                         const updateVisibleInterval = () => {
+                             visibleInterval = genomeScale.getComplexDomain();
+                             if (grid) grid.forceRender();
+                         };
+                         genomeScale.addEventListener("domain", updateVisibleInterval);
+                         updateVisibleInterval();
+                     }
                  }
              });
          }
@@ -580,6 +599,18 @@
                  return 99;
              }
 
+             function isGeneInInterval(gene, interval) {
+                 if (!interval) return true;
+                 const [startPt, endPt] = interval;
+                 const gOrder = chrOrder(gene.chr);
+                 const sOrder = chrOrder(startPt.chrom);
+                 const eOrder = chrOrder(endPt.chrom);
+                 if (gOrder < sOrder || gOrder > eOrder) return false;
+                 if (gOrder === sOrder && gene.end < startPt.pos) return false;
+                 if (gOrder === eOrder && gene.start > endPt.pos) return false;
+                 return true;
+             }
+
              tableData = Object.values(uniqueGenes);
              tableData.sort((a, b) => {
                  const pA = getPrio(a.gene);
@@ -628,9 +659,13 @@
                      const filterRadio = document.querySelector('input[name="log2Filter"]:checked');
                      const filter = filterRadio ? filterRadio.value : 'All';
                      const prioOnly = document.getElementById("prio-toggle") ? document.getElementById("prio-toggle").checked : false;
+                     const viewportOnly = document.getElementById("viewport-toggle") ? document.getElementById("viewport-toggle").checked : false;
                      let dt = tableData;
                      if (prioOnly) {
                          dt = dt.filter(d => getPrio(d.gene) < 3);
+                     }
+                     if (viewportOnly && currentDisplayMode !== 'bin') {
+                         dt = dt.filter(d => isGeneInInterval(d, visibleInterval));
                      }
                      if (filter === "Gain") {
                          dt = dt.filter(d => d.log2 >= thresholds.gain);
